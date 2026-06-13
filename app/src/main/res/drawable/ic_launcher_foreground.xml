@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer delicate research circle -->
+    <path
+        android:pathData="M54,20 A34,34 0 1,1 53.99,20 Z"
+        android:strokeWidth="1.5"
+        android:strokeColor="#0891B2"
+        android:strokeLineCap="round" />
+    
+    <!-- Shield Outline representing Legal Authority and IP Protection -->
+    <path
+        android:pathData="M54,30 C62,30 68,34 68,44 C68,54 58,66 54,74 C50,66 40,54 40,44 C40,34 46,30 54,30 Z"
+        android:fillColor="#1A2A4A"
+        android:strokeWidth="2.5"
+        android:strokeColor="#D97706" />
+
+    <!-- Scientific IP Grid Pattern inside shield -->
+    <path
+        android:pathData="M44,44 L64,44 M54,32 L54,70"
+        android:strokeWidth="1"
+        android:strokeColor="#0891B2" />
+
+    <!-- Central Tech Port / Key Core representing Scientific Precision and Forensic Evidence -->
+    <path
+        android:pathData="M54,42 A6,6 0 1,1 53.99,42 Z"
+        android:fillColor="#0891B2" />
+        
+    <!-- Tech Node lines branching outwards (Patent Claim Hierarchy Symbol) -->
+    <path
+        android:pathData="M44,42 L40,42 M64,42 L68,42 M54,32 L54,35 M54,58 L54,64"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+</vector>

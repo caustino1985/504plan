@@ -1,0 +1,6 @@
+{
+  "name": "Public Trust IP",
+  "description": "Institutional research and visualization platform for complex intellectual property litigation metrics, claim trees, and compliance synthesis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
