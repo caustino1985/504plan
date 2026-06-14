@@ -1,16 +1,12 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,27 +14,66 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
-import com.example.ui.viewmodel.CaustinTab
-import com.example.ui.viewmodel.ClaimNode
 import com.example.ui.viewmodel.CaustinViewModel
-import com.example.ui.viewmodel.PatentPortfolios
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun IpTreeScreen(
     viewModel: CaustinViewModel,
     modifier: Modifier = Modifier
 ) {
-    val selectedPortfolio by viewModel.selectedPortfolio.collectAsState()
-    val selectedClaimId by viewModel.selectedClaimId.collectAsState()
-    val verifiedPath = viewModel.getVerifiedClaimPath()
+    val asrsAnswers by viewModel.asrsAnswers.collectAsState()
+    val cadiAnswers by viewModel.cadiAnswers.collectAsState()
+    val onsetAge by viewModel.cadiAgeOfOnset.collectAsState()
+    
+    val hivHandScore by viewModel.hivHandScore.collectAsState()
+    val hivCD4 by viewModel.hivCD4Count.collectAsState()
+    val hivArt by viewModel.hivAntiretroviral.collectAsState()
+    val hivComorbidities by viewModel.hivComorbidities.collectAsState()
+
+    var activeSubMode by remember { mutableStateOf("asrs") } // "asrs", "cadi", "hiv"
+
+    val asrsQuestions = remember {
+        listOf(
+            "1. How often do you have trouble wrapping up final details of a project or assignment?",
+            "2. How often do you have difficulty getting things in order when you have to perform a task that requires organization?",
+            "3. How often do you have problems remembering appointments or obligations?",
+            "4. When you have a task that requires a lot of thought, how often do you avoid or delay getting started?",
+            "5. How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?",
+            "6. How often do you feel overly active and compelled to do things, as if you were driven by a motor?"
+        )
+    }
+
+    val cadiQuestions = remember {
+        listOf(
+            // Inattentive (9 items)
+            "C1. Suffer from wandering focus during prolonged scientific reading sets?",
+            "C2. Miss fine critical rules during high-density lab assignments?",
+            "C3. Struggle to maintain attention in 80+ minute lectures/colloquiums?",
+            "C4. Experience chronic blockades organizing multi-step computing project files?",
+            "C5. Misplace notebooks, reference standards, or hardware components?",
+            "C6. Highly sensitive / easily distracted by background visual movements?",
+            "C7. Delay initiation of lengthy research analysis reports?",
+            "C8. Forget daily academic obligations/liaison checkpoint cards?",
+            "C9. Fail to follow instructional paths sequentially without drifting?",
+            // Hyperactive/Impulsive (9 items)
+            "C10. Find yourself fidgeting or tapping keyboard keys excessively?",
+            "C11. Experience inner restlessness or severe mental tension?",
+            "C12. Leave your seat during long exams or assembly briefings?",
+            "C13. Talk excessively or blurt out answers before problems finish?",
+            "C14. Struggle with patience when waiting in queues or loops?",
+            "C15. Constantly interrupt fellow student peer discussions?",
+            "C16. Act on immediate impulse without mapping strategic failures?",
+            "C17. Have extreme difficulties engaging quietly in individual studies?",
+            "C18. Find yourself constantly 'on the go' as if motor-driven?"
+        )
+    }
 
     Column(
         modifier = modifier
@@ -54,7 +89,7 @@ fun IpTreeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "INTELLECTUAL PROPERTY ARCHITECTURE",
+                text = "CLINICAL DIAGNOSTIC SCREENERS",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontWeight = FontWeight.Bold
@@ -62,401 +97,332 @@ fun IpTreeScreen(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "PATENT CLAIM HIERARCHY",
+                text = "NEURO-COGNITIVE SCREENING",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
         }
 
-        // Portfolio Selection Row / Carousel
-        Text(
-            text = "SELECT ACTIVE INTELLECTUAL PROPERTY ASSET",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        PatentPortfolios.PORTFOLIOS.forEach { portfolio ->
-            val isSelected = selectedPortfolio.patentNumber == portfolio.patentNumber
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-                    .clickable { viewModel.selectPortfolio(portfolio) }
-                    .testTag("portfolio_select_${portfolio.patentNumber}"),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) NavyPrimary else MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(8.dp),
-                border = if (isSelected) BorderStroke(1.dp, AmberAccent2) else null,
-                elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 3.dp else 1.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = portfolio.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = portfolio.patentNumber,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) TealAccent1 else MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Icon(
-                        imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = if (isSelected) TealAccent1 else MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Selected Portfolio Description card
-        Column(
+        // Sub Navigation Tabs
+        TabRow(
+            selectedTabIndex = when (activeSubMode) {
+                "asrs" -> 0
+                "cadi" -> 1
+                else -> 2
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
+                .padding(bottom = 12.dp),
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary
         ) {
-            Text(
-                text = selectedPortfolio.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(bottom = 12.dp)
+            Tab(
+                selected = activeSubMode == "asrs",
+                onClick = { activeSubMode = "asrs" },
+                text = { Text("ASRS Scale") },
+                modifier = Modifier.testTag("tab_asrs")
+            )
+            Tab(
+                selected = activeSubMode == "cadi",
+                onClick = { activeSubMode = "cadi" },
+                text = { Text("CADI Assessment") },
+                modifier = Modifier.testTag("tab_cadi")
+            )
+            Tab(
+                selected = activeSubMode == "hiv",
+                onClick = { activeSubMode = "hiv" },
+                text = { Text("HIV+ Aging / HAND") },
+                modifier = Modifier.testTag("tab_hiv_screener")
             )
         }
 
-        // Title for Tree Visual
-        Text(
-            text = "INTERACTIVE INHERITANCE FORENSIC PATH",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        // Lazy List layout displaying nodes beautifully connected by line vectors
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            items(selectedPortfolio.claims) { claim ->
-                val isHighlighted = verifiedPath.contains(claim.id)
-                val isDirectSelected = selectedClaimId == claim.id
-                val indentVal = getClaimIndentation(claim.id, selectedPortfolio.claims)
-
-                ClaimTreeNodeView(
-                    claim = claim,
-                    indentation = indentVal,
-                    isHighlighted = isHighlighted,
-                    isDirectSelected = isDirectSelected,
-                    onNodeClick = {
-                        if (isDirectSelected) {
-                            viewModel.selectClaim(null)
-                        } else {
-                            viewModel.selectClaim(claim.id)
-                        }
-                    }
-                )
-            }
-
-            // Path Details verification panel
-            item {
-                AnimatedVisibility(visible = selectedClaimId != null) {
-                    val activeClaim = selectedPortfolio.claims.find { it.id == selectedClaimId }
-                    if (activeClaim != null) {
-                        ClaimDetailVerificationPanel(
-                            claim = activeClaim,
-                            verifiedPathIds = verifiedPath,
-                            portfolioClaims = selectedPortfolio.claims,
-                            onExploreWithAi = {
-                                viewModel.setAiInputText(
-                                    "Analyze patent Claim structure: ${activeClaim.title} within portfolio '${selectedPortfolio.title}'. Explain dependency risks, scope coverage, and relevant diagnostic/GINA statutes."
+            // ASRS Mode Screen Render
+            if (activeSubMode == "asrs") {
+                item {
+                    val score = asrsAnswers.sum()
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Adult ADHD Self-Report Scale (ASRS v1.1)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Six standardized screening questions calibrated to track executive function and attentional consistency. Scores >= 14 indicate highly diagnostic levels of ADHD impairment.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                progress = score / 24f,
+                                modifier = Modifier.fillMaxWidth().height(8.dp),
+                                color = if (score >= 14) Color.Red else MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Total Rating: $score / 24",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
                                 )
-                                viewModel.setTab(CaustinTab.ASSISTANT)
-                                viewModel.submitAiQuery()
+                                Text(
+                                    text = if (score >= 14) "POSITIVE RISK FLAG (Severe)" else "Borderline Attention Deficits",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (score >= 14) Color.Red else MaterialTheme.colorScheme.secondary
+                                )
                             }
-                        )
+                        }
+                    }
+                }
+
+                itemsIndexed(asrsQuestions) { index, question ->
+                    val value = asrsAnswers.getOrElse(index) { 2 }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = question,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val ratings = listOf("Never", "Rarely", "Sometime", "Often", "VeryOf")
+                                ratings.forEachIndexed { rIndex, rLabel ->
+                                    val rSelected = value == rIndex
+                                    FilterChip(
+                                        selected = rSelected,
+                                        onClick = { viewModel.setAsrsAnswer(index, rIndex) },
+                                        label = { Text(rLabel, fontSize = 10.sp) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = Color.White
+                                        ),
+                                        modifier = Modifier.testTag("asrs_${index}_chip_${rIndex}")
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
-}
 
-// Draw claims and connections
-@Composable
-fun ClaimTreeNodeView(
-    claim: ClaimNode,
-    indentation: Int,
-    isHighlighted: Boolean,
-    isDirectSelected: Boolean,
-    onNodeClick: () -> Unit
-) {
-    val borderColorAnimate by animateColorAsState(
-        targetValue = if (isDirectSelected) AmberAccent2 else if (isHighlighted) TealAccent1 else MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-        animationSpec = tween(300)
-    )
+            // CADI Mode Screen Render
+            if (activeSubMode == "cadi") {
+                item {
+                    val (presentation, severity) = viewModel.calculateCadiMetrics()
+                    val totalScore = cadiAnswers.sum()
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "CADI Comprehensive Diagnostic Interview",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Reported Age of Symptom Onset: ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                OutlinedTextField(
+                                    value = onsetAge,
+                                    onValueChange = { viewModel.setCadiAgeOfOnset(it) },
+                                    modifier = Modifier.weight(1f).height(48.dp).testTag("input_cadi_onset"),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(text = "Total Rating Score: $totalScore / 72", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                    Text(text = "ADHD Type: $presentation", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                Badge(containerColor = MaterialTheme.colorScheme.onTertiaryContainer) {
+                                    Text(
+                                        text = severity,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(6.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
-    val backgroundAnimate by animateColorAsState(
-        targetValue = if (isDirectSelected) AmberAccent2.copy(alpha = 0.12f) else if (isHighlighted) TealAccent1.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface,
-        animationSpec = tween(300)
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Render branching curves in a custom vertical Canvas
-        if (indentation > 0) {
-            Canvas(
-                modifier = Modifier
-                    .width((indentation * 18).dp)
-                    .height(48.dp)
-            ) {
-                val stepWidth = 18.dp.toPx()
-                val totalWidth = size.width
-                val midHeight = size.height / 2
-
-                // Vertical anchor line
-                drawLine(
-                    color = if (isHighlighted) TealAccent1 else Color.LightGray.copy(alpha = 0.5f),
-                    start = Offset(stepWidth / 2, 0f),
-                    end = Offset(stepWidth / 2, size.height),
-                    strokeWidth = 2.dp.toPx()
-                )
-
-                // Branch line to specific card indentation
-                drawLine(
-                    color = if (isHighlighted) TealAccent1 else Color.LightGray.copy(alpha = 0.5f),
-                    start = Offset(stepWidth / 2, midHeight),
-                    end = Offset(totalWidth, midHeight),
-                    strokeWidth = 2.dp.toPx()
-                )
+                itemsIndexed(cadiQuestions) { index, question ->
+                    val value = cadiAnswers.getOrElse(index) { 3 }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = question,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Rating Frequency: $value",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                                Slider(
+                                    value = value.toFloat(),
+                                    onValueChange = { viewModel.setCadiAnswer(index, it.toInt()) },
+                                    valueRange = 0f..4f,
+                                    steps = 3,
+                                    modifier = Modifier.weight(1f).testTag("cadi_slider_$index")
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        }
 
-        // Claim Card Block
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onNodeClick() }
-                .testTag("claim_node_${claim.id}"),
-            colors = CardDefaults.cardColors(containerColor = backgroundAnimate),
-            shape = RoundedCornerShape(6.dp),
-            border = BorderStroke(1.dp, borderColorAnimate),
-            elevation = CardDefaults.cardElevation(defaultElevation = if (isDirectSelected) 2.dp else 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = claim.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDirectSelected) AmberAccent2 else MaterialTheme.colorScheme.onSurface
-                    )
+            // HIV+ Aging Mode Screen Render
+            if (activeSubMode == "hiv") {
+                item {
+                    var editingHand by remember { mutableStateOf(hivHandScore.toString()) }
+                    var editingCd4 by remember { mutableStateOf(hivCD4) }
+                    var editingArt by remember { mutableStateOf(hivArt) }
+                    var editingComorb by remember { mutableStateOf(hivComorbidities) }
                     
-                    if (claim.parentId == null) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                        ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "INDEPENDENT",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "HIV+ Aging & Neurocognitive Comorbidity Screener",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                color = MaterialTheme.colorScheme.tertiary
                             )
-                        }
-                    } else {
-                        Text(
-                            text = "Reference claim ${claim.parentId}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = claim.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-// Verified path detail presentation card
-@Composable
-fun ClaimDetailVerificationPanel(
-    claim: ClaimNode,
-    verifiedPathIds: List<Int>,
-    portfolioClaims: List<ClaimNode>,
-    onExploreWithAi: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp)
-            .testTag("claim_detail_panel"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, TealAccent1),
-        shape = RoundedCornerShape(10.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Verified Path",
-                    tint = TealAccent1,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "FORENSIC CLAIMS VERIFICATION",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TealAccent1,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = claim.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = claim.description,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 22.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "CLAIMS DEPENDENCY FOOTPRINT",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Sequence of verified claims
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                verifiedPathIds.forEachIndexed { idx, id ->
-                    val pathClaim = portfolioClaims.find { it.id == id }
-                    if (pathClaim != null) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = if (id == claim.id) AmberAccent2 else TealAccent1,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Claim ${pathClaim.id}",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                text = "Tracks overlapping clinical indicators of focus drops, HAND (HIV-associated Neurocognitive Disorders), medication routines, and CD4 boundaries.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        if (idx < verifiedPathIds.lastIndex) {
-                            Icon(
-                                imageVector = Icons.Default.Link,
-                                contentDescription = "linked to",
-                                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                                modifier = Modifier.size(14.dp)
+                            OutlinedTextField(
+                                value = editingHand,
+                                onValueChange = { 
+                                    editingHand = it
+                                    it.toIntOrNull()?.let { score ->
+                                        viewModel.updateHivScreener(score, editingCd4, editingArt, editingComorb)
+                                    }
+                                },
+                                label = { Text("HAND Cognitive Slowing Score (0-27)") },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("input_hiv_hand"),
+                                singleLine = true
                             )
+
+                            OutlinedTextField(
+                                value = editingCd4,
+                                onValueChange = { 
+                                    editingCd4 = it
+                                    viewModel.updateHivScreener(hivHandScore, it, editingArt, editingComorb)
+                                },
+                                label = { Text("CD4 T-Cell Count (lab-verified)") },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("input_hiv_cd4"),
+                                singleLine = true
+                            )
+
+                            OutlinedTextField(
+                                value = editingArt,
+                                onValueChange = { 
+                                    editingArt = it
+                                    viewModel.updateHivScreener(hivHandScore, editingCd4, it, editingComorb)
+                                },
+                                label = { Text("Antiretroviral Routine (ART status)") },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("input_hiv_art"),
+                                singleLine = true
+                            )
+
+                            OutlinedTextField(
+                                value = editingComorb,
+                                onValueChange = { 
+                                    editingComorb = it
+                                    viewModel.updateHivScreener(hivHandScore, editingCd4, editingArt, it)
+                                },
+                                label = { Text("Secondary Cognitive Comorbidities") },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("input_hiv_comorb"),
+                                singleLine = true
+                            )
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = {
+                                    viewModel.updateHivScreener(
+                                        editingHand.toIntOrNull() ?: 18,
+                                        editingCd4,
+                                        editingArt,
+                                        editingComorb
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth().testTag("save_hiv_button")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Save, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("VERIFY & COMMIT COMORBIDITY RATINGS")
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Hash
-            Text(
-                text = "CRYPTOGRAPHIC ID PROOF",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = claim.verifiedHash,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // AI Action Button linking to Assistant
-            Button(
-                onClick = { onExploreWithAi() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("ai_synthesize_claim_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lightbulb,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp).size(18.dp)
-                )
-                Text("Synthesize Claim Scope with AI")
-            }
         }
     }
-}
-
-// Compute tree indent levels recursively
-private fun getClaimIndentation(claimId: Int, claims: List<ClaimNode>): Int {
-    var indent = 0
-    var currentClaim = claims.find { it.id == claimId }
-    while (currentClaim?.parentId != null) {
-        indent++
-        currentClaim = claims.find { it.id == currentClaim!!.parentId }
-    }
-    return indent
 }

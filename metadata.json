@@ -1,6 +1,6 @@
 {
-  "name": "Public Trust IP",
-  "description": "Institutional research and visualization platform for complex intellectual property litigation metrics, claim trees, and compliance synthesis.",
+  "name": "Transition 504",
+  "description": "Step-by-step transition platform to build 504 Accommodation Plans for students with ADHD/cognitive challenges transitioning from high school to college.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

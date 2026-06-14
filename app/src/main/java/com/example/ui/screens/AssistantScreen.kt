@@ -25,8 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AssistantMessage
-import com.example.network.ArxivEntry
-import com.example.network.PubMedEntry
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AiResponseState
 import com.example.ui.viewmodel.CaustinViewModel
@@ -44,26 +42,17 @@ fun AssistantScreen(
     val aiResponseState by viewModel.aiResponseState.collectAsState()
     val assistantHistory by viewModel.assistantHistory.collectAsState()
 
-    // PubMed states
-    val pubMedQuery by viewModel.pubMedQuery.collectAsState()
-    val pubMedResults by viewModel.pubMedResults.collectAsState()
-    val pubMedLoading by viewModel.pubMedLoading.collectAsState()
-    val pubMedError by viewModel.pubMedError.collectAsState()
-
-    // arXiv states
-    val arxivQuery by viewModel.arxivQuery.collectAsState()
-    val arxivResults by viewModel.arxivResults.collectAsState()
-    val arxivLoading by viewModel.arxivLoading.collectAsState()
-    val arxivError by viewModel.arxivError.collectAsState()
-
-    var activeMode by remember { mutableStateOf("ai") } // "ai" or "academic"
-    var academicSubMode by remember { mutableStateOf("pubmed") } // "pubmed" or "arxiv"
-    
-    var customPubMedInput by remember { mutableStateOf("") }
-    var customArxivInput by remember { mutableStateOf("") }
-
     val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
+
+    val suggestionPrompts = remember {
+        listOf(
+            "Draft a formal request to DSS introducing Sarah's Section 504 transition accommodations.",
+            "Explain GINA protections: Can a university restrict Sarah from athletics due to genetic parameters?",
+            "What criteria do colleges use to authorize extended testing time under ADA Title II?",
+            "Can I appeal if university DSS rejects Sarah's fMRI or COMT genetic biomarker evidence?"
+        )
+    }
 
     Column(
         modifier = modifier
@@ -79,7 +68,7 @@ fun AssistantScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "LEGISLATIVE SYNTHESIZER ENGINE",
+                text = "LEGISLATIVE TRANSITION SYNTHESIZER",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontWeight = FontWeight.Bold
@@ -87,869 +76,274 @@ fun AssistantScreen(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "RESEARCH INTEGRATION HUB",
+                text = "SELF-ADVOCACY INTEGRATION CHAT",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
         }
 
-        // Top Navigation Tabs for AI and Academic Mode
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        // Title and description
+        Text(
+            text = "Ask our AI legal self-advocacy counselor regarding transition policies from K-12 IDEA IEPs to university ADA Section 504 and Title II structures. The models utilize Sarah's live biochemical indices to formulate draft letters.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // Suggestion Chips Carousel
+        Text(
+            text = "SELECT INTEGRATED ADVOCACY MACRO TEMPLATES",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        if (activeMode == "ai") MaterialTheme.colorScheme.primary else Color.Transparent,
-                        RoundedCornerShape(6.dp)
-                    )
-                    .clickable { activeMode = "ai" }
-                    .padding(vertical = 8.dp)
-                    .testTag("mode_selector_ai"),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = if (activeMode == "ai") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+            items(suggestionPrompts) { prompt ->
+                Card(
+                    modifier = Modifier
+                        .widthIn(max = 280.dp)
+                        .clickable { viewModel.submitAiQuery(prompt) }
+                        .testTag("suggestion_chip_${prompt.hashCode()}"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
                     Text(
-                        text = "AI CO-SYNTHESIZER",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeMode == "ai") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        if (activeMode == "academic") MaterialTheme.colorScheme.primary else Color.Transparent,
-                        RoundedCornerShape(6.dp)
-                    )
-                    .clickable { activeMode = "academic" }
-                    .padding(vertical = 8.dp)
-                    .testTag("mode_selector_academic"),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = if (activeMode == "academic") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "ACADEMIC PORTAL",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeMode == "academic") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = prompt,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(10.dp)
                     )
                 }
             }
         }
 
-        if (activeMode == "ai") {
-            // ================== AI CHAT MODE INTERFACE ==================
-            // Suggestion templates carousel
-            if (aiResponseState is AiResponseState.Idle && assistantHistory.isEmpty()) {
-                Text(
-                    text = "SELECT AN AUDIT QUICK TEMPLATE TO BEGIN SYNTHESIS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+        Divider(modifier = Modifier.padding(bottom = 16.dp))
 
-                val suggestedPrompts = listOf(
-                    "Summarize GINA Title II genetic restrictions for health databases",
-                    "Explain how 21 CFR Part 11 applies to diagnostic claim alignment",
-                    "Evaluate legal liability of Maryland IDEA clinical disputes",
-                    "Trace independent Claim 1 dependencies within Patent US-1190283"
-                )
-
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(suggestedPrompts) { promptText ->
-                        Card(
-                            modifier = Modifier
-                                .width(220.dp)
-                                .height(110.dp)
-                                .clickable {
-                                    viewModel.setAiInputText(promptText)
-                                    viewModel.submitAiQuery(promptText)
-                                }
-                                .testTag("suggested_prompt_card"),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Lightbulb,
-                                    contentDescription = "Quick idea",
-                                    tint = AmberAccent2,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = promptText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 3,
-                                    lineHeight = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Subtitle indicator
-            if (assistantHistory.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "VERIFIED RESEARCH HISTORY LOGS (${assistantHistory.size})",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Purge Archives",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = AmberAccent2,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clickable { viewModel.clearHistory() }
-                            .testTag("purge_history_btn")
-                    )
-                }
-            }
-
-            // Conversation history logs
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                // Processing status loader
-                if (aiResponseState is AiResponseState.Loading) {
-                    item {
-                        LoadingSkeletonCard()
-                    }
-                }
-
-                // Error display card
-                if (aiResponseState is AiResponseState.Error) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("ai_error_card"),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "Error notification",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "SYNTHESIS HALTED",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.error,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = (aiResponseState as AiResponseState.Error).message,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Current successfully processed answer if active
-                if (aiResponseState is AiResponseState.Success) {
-                    val successState = aiResponseState as AiResponseState.Success
-                    item {
-                        CurrentSynthesizedCard(
-                            query = "Current Query",
-                            reply = successState.response,
-                            provenanceHash = successState.provenanceHash
-                        )
-                    }
-                }
-
-                // Historic records from database
-                items(assistantHistory, key = { it.id }) { message ->
-                    Card(
+        // History lists & message blocks
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            if (assistantHistory.isEmpty()) {
+                item {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("history_msg_card_${message.id}"),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(8.dp)
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Chat,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "No Active Synthesis History",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                            )
+                            Text(
+                                "Ask or select a suggestion chip above to begin.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(assistantHistory, key = { it.id }) { msg ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Question Bubble (Right Aligned)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                            .widthIn(max = 300.dp)
+                            .testTag("chat_bubble_right_${msg.id}")
+                    ) {
+                        Column {
+                            Text(
+                                text = "STUDENT QUESTIONS:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = msg.queryText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Answer Bubble (Left Aligned)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                            .fillMaxWidth()
+                            .testTag("chat_bubble_left_${msg.id}")
+                    ) {
+                        Column {
+                            Text(
+                                text = "SELF-ADVOCACY COUNSEL SYNTHESIS:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = msg.replyText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Book,
-                                        contentDescription = "Archive",
-                                        tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "REGULATORY ARCHIVE ID #${message.id}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
                                 Text(
-                                    text = dateFormatter.format(Date(message.timestamp)),
+                                    text = "PROVENANCE SEAL: ${msg.provenanceHash}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                                    fontSize = 7.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                                Text(
+                                    text = dateFormatter.format(Date(msg.timestamp)),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 8.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                        }
+                    }
+                }
+            }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // User Inquiry
-                            Text(
-                                text = "Inquiry: " + message.queryText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
+            // Real-time Response loading status
+            if (aiResponseState is AiResponseState.Loading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.secondary
                             )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Divider(color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f))
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // AI Response
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = message.replyText,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                lineHeight = 22.sp
+                                text = "Consulting legal compliance frameworks & clinical registries...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                color = MaterialTheme.colorScheme.secondary
                             )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Provenance Hash anchor
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = TealAccent1.copy(alpha = 0.08f),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = TealAccent1,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "SECURE VERIFICATION: " + message.provenanceHash,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = TealAccent1,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
                         }
                     }
                 }
             }
 
-            // Static Bottom Input Row
-            Surface(
-                tonalElevation = 8.dp,
+            if (aiResponseState is AiResponseState.Error) {
+                item {
+                    val errMsg = (aiResponseState as AiResponseState.Error).message
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Error, contentDescription = "Error", tint = MaterialTheme.colorScheme.error)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = errMsg,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bottom Chat Input Box Row
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 2.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
+                TextField(
+                    value = aiInputText,
+                    onValueChange = { viewModel.setAiInputText(it) },
+                    placeholder = { Text("Ask about Title II, GINA, HIPAA shields, or drafts...", fontSize = 12.sp) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = aiInputText,
-                        onValueChange = { viewModel.setAiInputText(it) },
-                        placeholder = { Text("Ask regulatory assistant...") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("ai_assistant_input_field"),
-                        maxLines = 6,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
-                        ),
-                        textStyle = MaterialTheme.typography.bodyLarge
-                    )
-
-                    IconButton(
-                        onClick = { viewModel.submitAiQuery() },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = NavyPrimary,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier
-                            .size(44.dp)
-                            .testTag("ai_assistant_submit_btn"),
-                        enabled = aiInputText.isNotBlank() && aiResponseState !is AiResponseState.Loading
-                    ) {
-                        if (aiResponseState is AiResponseState.Loading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Send, contentDescription = "Submit query button")
-                        }
-                    }
-                }
-            }
-        } else {
-            // ================== ACADEMIC LITERATURE EXPLORATION GATEWAY ==================
-            // Sub Tabs for PubMed vs arXiv
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = { academicSubMode = "pubmed" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (academicSubMode == "pubmed") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (academicSubMode == "pubmed") MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+                        .weight(1f)
+                        .testTag("ai_input_text"),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
                     ),
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("NIH PubMed", style = MaterialTheme.typography.labelLarge)
-                }
+                    singleLine = true
+                )
                 
-                Button(
-                    onClick = { academicSubMode = "arxiv" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (academicSubMode == "arxiv") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (academicSubMode == "arxiv") MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                IconButton(
+                    onClick = { viewModel.clearHistory() },
+                    modifier = Modifier.testTag("clear_history_button")
                 ) {
-                    Icon(imageVector = Icons.Default.Science, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("arXiv Tools", style = MaterialTheme.typography.labelLarge)
-                }
-            }
-
-            // Real search inputs & information layouts
-            if (academicSubMode == "pubmed") {
-                // NIH PubMed Research Portal
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "NIH PUBMED RESEARCH PORTAL (GWAS)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TealAccent1,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Execute direct Entrez API searches for clinical biomarkers, sequencing, and genetic indicators.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = customPubMedInput,
-                                onValueChange = { customPubMedInput = it },
-                                placeholder = { Text("e.g. gwas ADHD") },
-                                modifier = Modifier.weight(1f).height(50.dp).testTag("pubmed_search_input"),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (customPubMedInput.isNotEmpty()) {
-                                        IconButton(onClick = { customPubMedInput = "" }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear text", modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-                            )
-                            Button(
-                                onClick = {
-                                    val queryText = customPubMedInput.ifBlank { "gwas" }
-                                    viewModel.searchPubMedRecords(queryText)
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(50.dp).testTag("pubmed_search_btn")
-                            ) {
-                                Text("Search")
-                            }
-                        }
-                    }
-                }
-
-                // Show active results of PubMed
-                if (pubMedLoading) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = TealAccent1)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Quering NCBI Entrez database...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                        }
-                    }
-                } else if (pubMedError != null) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text(text = pubMedError ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                    }
-                } else {
-                    Text(
-                        text = "NIH PUBLIC SEARCH RESULTS (Query: \"$pubMedQuery\")",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(pubMedResults) { entry ->
-                            PubMedResultCard(entry = entry) {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(entry.url))
-                                context.startActivity(intent)
-                            }
-                        }
-                    }
-                }
-
-            } else {
-                // arXiv Automated Tool Discovery
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "ARXIV AUTOMATED SOFTWARE DISCOVERY",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AmberAccent2,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Scans arXiv papers mentioning genetics & risk scoring to isolate permissive open licenses (MIT, Creative Commons) for immediate clinical deployment.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = customArxivInput,
-                                onValueChange = { customArxivInput = it },
-                                placeholder = { Text("e.g. genetics 'risk scoring'") },
-                                modifier = Modifier.weight(1f).height(50.dp).testTag("arxiv_search_input"),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (customArxivInput.isNotEmpty()) {
-                                        IconButton(onClick = { customArxivInput = "" }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear text", modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-                            )
-                            Button(
-                                onClick = {
-                                    val queryText = customArxivInput.ifBlank { "genetics \"risk scoring\" mit" }
-                                    viewModel.searchArxivRecords(queryText)
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(50.dp).testTag("arxiv_search_btn")
-                            ) {
-                                Text("Scan")
-                            }
-                        }
-                    }
-                }
-
-                // Show active results of arXiv
-                if (arxivLoading) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = AmberAccent2)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Mapping open patents and libraries from export.arxiv.org...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                        }
-                    }
-                } else if (arxivError != null) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text(text = arxivError ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                    }
-                } else {
-                    Text(
-                        text = "DISCOVERED GENETIC TOOLS (${arxivResults.size})",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(arxivResults) { paper ->
-                            ArxivResultCard(paper = paper) {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paper.url))
-                                context.startActivity(intent)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PubMedResultCard(
-    entry: PubMedEntry,
-    onOpen: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().testTag("pubmed_card_entry"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = TealAccent1.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = "PubMed ID: " + entry.id,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TealAccent1,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Clear History",
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                 }
-                Text(
-                    text = entry.date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = entry.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = NavyPrimary,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = "Journal: " + entry.journal,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            
-            Spacer(modifier = Modifier.height(10.dp))
-            
-            Button(
-                onClick = onOpen,
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Icon(Icons.Default.Launch, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Open NCBI Entrez Archive", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
 
-@Composable
-fun ArxivResultCard(
-    paper: ArxivEntry,
-    onOpen: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().testTag("arxiv_card_entry"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                IconButton(
+                    onClick = { viewModel.submitAiQuery() },
+                    modifier = Modifier.testTag("submit_chat_button"),
+                    enabled = aiInputText.isNotBlank()
                 ) {
-                    paper.licensesMentioned.forEach { lic ->
-                        Surface(
-                            color = if (lic == "MIT License") AmberAccent2.copy(alpha = 0.1f) else TealAccent1.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = lic,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (lic == "MIT License") AmberAccent2 else TealAccent1,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-                
-                Text(
-                    text = paper.published,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = paper.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = NavyPrimary
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Authors: " + paper.authors,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = paper.summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 15.sp
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Button(
-                onClick = onOpen,
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.DownloadForOffline, contentDescription = null, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Access Scientific PDF Paper", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-fun LoadingSkeletonCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("skeleton_loader_card"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(
-                    color = TealAccent1,
-                    strokeWidth = 3.dp,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "RETRIEVING LEGISLATIVE BILL ARCHIVES & CFR STATUTES...",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TealAccent1,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .height(14.dp)
-                    .background(Color.LightGray.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-                    .background(Color.LightGray.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(14.dp)
-                    .background(Color.LightGray.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-            )
-        }
-    }
-}
-
-@Composable
-fun CurrentSynthesizedCard(
-    query: String,
-    reply: String,
-    provenanceHash: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("current_synthesized_card"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, TealAccent1),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Success Verification",
-                    tint = TealAccent1,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "LEGISLATION SYNTHESIS COMPLETED",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TealAccent1,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = reply,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 22.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                color = NavyPrimary.copy(alpha = 0.05f),
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Text(
-                        text = "SECURE PROVENANCE RECORD CO-PROOF",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NavyPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = provenanceHash,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send Message",
+                        tint = if (aiInputText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                     )
                 }
             }
